@@ -3,37 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KASIR BOS - SPEED EDITION</title>
+    <title>KASIR BOS - FIX EDITION</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Poppins:wght@400;600&display=swap');
         :root { 
             --primary: #1e3799; --gold: #d4af37; --danger: #ef4444; --success: #16a34a; 
             --bg-app: #060b1a; --bg-card: #111a2e; --text-main: #f8fafc; --border: #1e293b;
         }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
-        body { font-family: 'Poppins', sans-serif; background: #000; margin: 0; color: var(--text-main); overscroll-behavior: none; }
-        .app-container { width: 100%; max-width: 480px; background: var(--bg-app); min-height: 100vh; position: relative; margin: 0 auto; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: 'Poppins', sans-serif; background: #000; margin: 0; color: var(--text-main); }
+        .app-container { width: 100%; max-width: 480px; background: var(--bg-app); min-height: 100vh; margin: 0 auto; position: relative; }
 
-        /* HEADER */
+        /* UI ELEMENTS */
         .header { background: linear-gradient(135deg, var(--primary), #4a69bd); padding: 50px 20px 80px; border-radius: 0 0 35px 35px; text-align: center; }
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: -40px 20px 20px; }
-
-        /* CONTENT */
         .page { display: none; padding: 15px 15px 120px; }
         .page.active { display: block; }
         .card { background: var(--bg-card); padding: 15px; border-radius: 18px; margin-bottom: 12px; border: 1px solid var(--border); }
         
-        /* NAV */
-        .bottom-nav { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); width: 92%; height: 65px; background: #111a2e; display: none; justify-content: space-around; align-items: center; border-radius: 20px; z-index: 1000; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        /* NAVBAR */
+        .bottom-nav { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); width: 92%; height: 65px; background: #111a2e; display: none; justify-content: space-around; align-items: center; border-radius: 20px; z-index: 1000; border: 1px solid var(--border); }
         .nav-item { color: #64748b; font-size: 10px; border: none; background: none; text-align: center; cursor: pointer; }
         .nav-item.active { color: var(--gold); }
         .nav-item i { font-size: 20px; display: block; font-style: normal; }
 
-        /* FORM */
-        input { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--border); margin: 6px 0; background: #0a1128; color: white; font-size: 14px; }
+        input { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--border); margin: 6px 0; background: #0a1128; color: white; }
         .btn-gold { background: var(--gold); color: white; border: none; padding: 14px; border-radius: 12px; width: 100%; font-weight: 700; cursor: pointer; }
-        .badge { padding: 6px 10px; border-radius: 8px; border: none; color: white; font-size: 11px; cursor: pointer; }
-
+        
         #login-screen { position: fixed; inset: 0; z-index: 9999; background: #0a1128; display: flex; justify-content: center; align-items: center; padding: 25px; }
         #qris-pay-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000; display: none; justify-content: center; align-items: center; padding: 20px; }
     </style>
@@ -52,11 +48,11 @@
 
     <div id="qris-pay-overlay">
         <div class="card" style="width:100%; max-width:320px; text-align:center;">
-            <h3>Pembayaran QRIS</h3>
+            <h3>Bayar QRIS</h3>
             <img id="cust-qris" style="width:100%; border-radius:12px; margin:10px 0; display:none;">
             <h2 id="qris-amt" style="color:var(--gold)">Rp 0</h2>
-            <button onclick="pos.done()" class="btn-gold">SUDAH LUNAS</button>
-            <p onclick="ui.hideQR()" style="color:var(--danger); margin-top:15px; font-size:13px;">BATAL</p>
+            <button onclick="pos.done('QRIS')" class="btn-gold">SUDAH LUNAS</button>
+            <p onclick="ui.hideQR()" style="color:var(--danger); margin-top:15px; cursor:pointer">BATAL</p>
         </div>
     </div>
 
@@ -83,13 +79,21 @@
     <div id="p-kasir" class="page">
         <h3>Menu</h3>
         <div id="l-menu" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;"></div>
+        
         <div class="card" style="margin-top:20px; border-top: 3px solid var(--gold);">
             <h4>Keranjang</h4>
-            <div id="cart-list" style="max-height:150px; overflow-y:auto;"></div>
-            <div style="display:flex; justify-content:space-between; margin-top:10px; border-top:1px solid #334155; padding-top:10px;">
+            <div id="cart-list" style="margin-bottom:10px;"></div>
+            <div style="display:flex; justify-content:space-between; border-top:1px solid #334155; padding-top:10px;">
                 <b>TOTAL</b><b id="cart-t" style="color:var(--gold)">Rp 0</b>
             </div>
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:15px">
+            
+            <input type="number" id="cash-in" oninput="pos.calChange()" placeholder="Uang Tunai (Rp)..." style="margin-top:15px; border-color:var(--gold)">
+            <div style="display:flex; justify-content:space-between; margin-bottom:15px">
+                <small>Kembalian:</small>
+                <b id="cash-change" style="color:var(--success)">Rp 0</b>
+            </div>
+
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
                 <button onclick="pos.pay('CASH')" class="btn-gold" style="background:#334155">CASH</button>
                 <button onclick="pos.pay('QRIS')" class="btn-gold">QRIS</button>
             </div>
@@ -123,39 +127,29 @@
             <input type="text" id="in-nama" placeholder="Nama Toko">
             <button onclick="ui.saveName()" class="btn-gold">UPDATE</button>
         </div>
-
         <div id="admin-panel" style="display:none;" class="card">
             <h4 style="color:var(--gold)">👑 Boss Gilang Panel</h4>
             <input type="text" id="gen-id" placeholder="ID Customer Baru">
             <button onclick="core.makeToken()" class="btn-gold">BUAT TOKEN</button>
             <div id="token-res" style="margin-top:10px; text-align:center; font-weight:800; color:var(--success);"></div>
         </div>
-
         <div class="card"><h4>Upload QRIS</h4><input type="file" id="up-qris"></div>
-        <button onclick="pos.reset()" style="width:100%; padding:12px; background:none; border:1px solid var(--border); color:var(--danger); border-radius:12px;">Hapus Data Hari Ini</button>
+        <button onclick="pos.reset()" style="width:100%; padding:12px; background:none; border:1px solid var(--border); color:var(--danger); border-radius:12px;">Reset Data Hari Ini</button>
         <button onclick="ui.logout()" class="btn-gold" style="background:var(--danger); margin-top:10px">LOGOUT</button>
     </div>
 </div>
 
 <script>
     const core = {
-        KEY: "BOSSJAWIR",
-        ADMIN_ID: "BOSSGILANG",
-        ADMIN_TOKEN: "181307",
-
+        KEY: "BOSSJAWIR", ADMIN_ID: "BOSSGILANG", ADMIN_TOKEN: "181307",
         login() {
             const id = document.getElementById('id-warung').value.trim().toUpperCase();
             const tk = document.getElementById('id-token').value.trim();
-            if(id === this.ADMIN_ID && tk === this.ADMIN_TOKEN) {
-                this.setSes(id);
-            } else if(id && tk === this.gen(id)) {
-                this.setSes(id);
-            } else { alert("Gagal Login!"); }
-        },
-        setSes(id) {
-            localStorage.setItem('kb_id', id);
-            localStorage.setItem('kb_ses', new Date().toDateString());
-            location.reload();
+            if((id === this.ADMIN_ID && tk === this.ADMIN_TOKEN) || (id && tk === this.gen(id))) {
+                localStorage.setItem('kb_id', id);
+                localStorage.setItem('kb_ses', new Date().toDateString());
+                location.reload();
+            } else alert("Gagal!");
         },
         gen(id) {
             const s = new Date().toDateString() + id + this.KEY;
@@ -203,10 +197,17 @@
         },
         draw() {
             const l = document.getElementById('cart-list'); let t = 0; l.innerHTML = '';
-            this.cart.forEach((c, i) => { t += c.p; l.innerHTML += `<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">${c.n} <b onclick="pos.rem(${i})">×</b></div>`; });
+            this.cart.forEach((c, i) => { t += c.p; l.innerHTML += `<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px">${c.n} <b onclick="pos.rem(${i})" style="color:var(--danger)">×</b></div>`; });
             document.getElementById('cart-t').innerText = "Rp " + t.toLocaleString();
+            this.calChange();
         },
         rem(i) { this.cart.splice(i,1); this.draw(); },
+        calChange() {
+            const t = this.cart.reduce((a,b)=>a+b.p, 0);
+            const cash = parseInt(document.getElementById('cash-in').value) || 0;
+            const change = cash - t;
+            document.getElementById('cash-change').innerText = "Rp " + (change < 0 ? 0 : change).toLocaleString();
+        },
         pay(type) {
             if(!this.cart.length) return;
             if(type === 'QRIS') {
@@ -215,14 +216,31 @@
                 document.getElementById('cust-qris').style.display = img ? 'block' : 'none';
                 document.getElementById('qris-amt').innerText = document.getElementById('cart-t').innerText;
                 document.getElementById('qris-pay-overlay').style.display = 'flex';
-            } else this.done();
+            } else {
+                const t = this.cart.reduce((a,b)=>a+b.p, 0);
+                const cash = parseInt(document.getElementById('cash-in').value) || 0;
+                if(cash < t) return alert("Uang Kurang!");
+                this.done('CASH');
+            }
         },
-        done() {
-            this.cart.forEach(c => { const i = this.menu.findIndex(m => m.id == c.id); if(i!==-1) { this.menu[i].s--; this.menu[i].laku++; }});
-            this.rev += this.cart.reduce((a,b)=>a+b.p, 0); this.ord++;
+        done(method) {
+            const total = this.cart.reduce((a,b)=>a+b.p, 0);
+            const change = (parseInt(document.getElementById('cash-in').value) || 0) - total;
+            
+            this.cart.forEach(c => { 
+                const i = this.menu.findIndex(m => m.id == c.id); 
+                if(i!==-1) { this.menu[i].s--; this.menu[i].laku++; }
+            });
+
+            this.rev += total; this.ord++;
             localStorage.setItem('kb_rev', this.rev); localStorage.setItem('kb_ord', this.ord);
             localStorage.setItem('kb_menu', JSON.stringify(this.menu));
-            this.cart = []; ui.hideQR(); this.init();
+            
+            const msg = method === 'CASH' ? `Berhasil!\nKembalian: Rp ${change.toLocaleString()}` : "Pembayaran QRIS Berhasil!";
+            alert(msg);
+
+            this.cart = []; document.getElementById('cash-in').value = '';
+            ui.hideQR(); this.init();
         },
         addEx() {
             const n = document.getElementById('ex-note').value, a = parseInt(document.getElementById('ex-amt').value);
@@ -239,7 +257,7 @@
             document.getElementById('v-ord').innerText = this.ord;
             document.getElementById('v-exp').innerText = "Rp " + this.exp.toLocaleString();
         },
-        reset() { if(confirm("Reset?")) { localStorage.setItem('kb_rev',0); localStorage.setItem('kb_ord',0); localStorage.setItem('kb_exp',0); localStorage.setItem('kb_ex','[]'); location.reload(); } }
+        reset() { if(confirm("Reset data hari ini?")) { localStorage.setItem('kb_rev',0); localStorage.setItem('kb_ord',0); localStorage.setItem('kb_exp',0); localStorage.setItem('kb_ex','[]'); location.reload(); } }
     };
 
     const inv = {
@@ -250,12 +268,12 @@
             else pos.menu.push({id: Date.now(), n, p, s: 100, laku:0});
             localStorage.setItem('kb_menu', JSON.stringify(pos.menu)); location.reload();
         },
-        edit(id) { const m = pos.menu.find(x => x.id == id); document.getElementById('n-name').value = m.n; document.getElementById('n-price').value = m.p; document.getElementById('edit-id').value = m.id; },
-        del(id) { pos.menu = pos.menu.filter(m => m.id != id); localStorage.setItem('kb_menu', JSON.stringify(pos.menu)); pos.init(); },
+        edit(id) { const m = pos.menu.find(x => x.id == id); document.getElementById('n-name').value = m.n; document.getElementById('n-price').value = m.p; document.getElementById('edit-id').value = m.id; window.scrollTo(0,0); },
+        del(id) { if(confirm("Hapus?")) { pos.menu = pos.menu.filter(m => m.id != id); localStorage.setItem('kb_menu', JSON.stringify(pos.menu)); pos.init(); } },
         render() {
             const l = document.getElementById('l-stok'); l.innerHTML = '';
             pos.menu.forEach(m => {
-                l.innerHTML += `<div class="card" style="display:flex;justify-content:space-between;"><span>${m.n}</span><div><button class="badge" style="background:var(--primary)" onclick="inv.edit(${m.id})">✏️</button> <button class="badge" style="background:var(--danger)" onclick="inv.del(${m.id})">🗑️</button></div></div>`;
+                l.innerHTML += `<div class="card" style="display:flex;justify-content:space-between;align-items:center;"><span>${m.n}</span><div><button style="background:var(--primary);color:white;border:none;padding:5px 10px;border-radius:5px" onclick="inv.edit(${m.id})">✏️</button> <button style="background:var(--danger);color:white;border:none;padding:5px 10px;border-radius:5px" onclick="inv.del(${m.id})">🗑️</button></div></div>`;
             });
         }
     };
@@ -267,7 +285,7 @@
             document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
         },
-        saveName() { const n = document.getElementById('in-nama').value; if(n) { localStorage.setItem('kb_nama', n); this.refresh(); } },
+        saveName() { const n = document.getElementById('in-nama').value; if(n) { localStorage.setItem('kb_nama', n); this.refresh(); alert("Nama diganti!"); } },
         refresh() { const n = localStorage.getItem('kb_nama') || "KASIR BOS"; document.getElementById('disp-nama').innerText = n; document.getElementById('in-nama').value = n; },
         hideQR() { document.getElementById('qris-pay-overlay').style.display = 'none'; },
         logout() { localStorage.removeItem('kb_ses'); location.reload(); }
