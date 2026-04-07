@@ -152,188 +152,71 @@
 </div>
 
 <script>
-    // CORE SYSTEM & ADMIN ACCESS
     const core = {
         KEY: "BOSSJAWIR",
         ADMIN_ID: "BOSSGILANG",
         ADMIN_TOKEN: "181307",
 
         login() {
-            const id = document.getElementById('id-warung').value.toUpperCase();
-            const tk = document.getElementById('id-token').value;
+            // Ambil input dan bersihkan dari spasi yang tidak sengaja terketik
+            const idInput = document.getElementById('id-warung').value.trim().toUpperCase();
+            const tkInput = document.getElementById('id-token').value.trim();
             
-            if(id === this.ADMIN_ID && tk === this.ADMIN_TOKEN) {
-                localStorage.setItem('kb_id', id);
+            // 1. CEK AKSES MASTER (BOSS GILANG)
+            if(idInput === this.ADMIN_ID && tkInput === this.ADMIN_TOKEN) {
+                localStorage.setItem('kb_id', idInput);
                 localStorage.setItem('kb_ses', new Date().toDateString());
+                localStorage.setItem('is_admin', 'true'); // Tandai sebagai admin
                 location.reload();
-            } else if(id && tk === this.gen(id)) {
-                localStorage.setItem('kb_id', id);
+                return;
+            }
+
+            // 2. CEK AKSES CUSTOMER BIASA
+            if(idInput && tkInput === this.gen(idInput)) {
+                localStorage.setItem('kb_id', idInput);
                 localStorage.setItem('kb_ses', new Date().toDateString());
+                localStorage.setItem('is_admin', 'false');
                 location.reload();
-            } else { alert("Akses Ditolak!"); }
+            } else { 
+                alert("Akses Ditolak! Pastikan ID dan Token sudah benar."); 
+            }
         },
+
         gen(id) {
+            // Rumus rahasia pembuat token customer
             const s = new Date().toDateString() + id + this.KEY;
             let h = 0; for(let i=0; i<s.length; i++) h = ((h<<5)-h)+s.charCodeAt(i);
             return "KB" + Math.abs(h).toString().substring(0,4);
         },
+
         generateToken() {
-            const id = document.getElementById('gen-id').value.toUpperCase();
-            if(!id) return alert("Masukkan ID!");
+            const id = document.getElementById('gen-id').value.trim().toUpperCase();
+            if(!id) return alert("Masukkan ID Customer dulu!");
             document.getElementById('token-result').innerText = "TOKEN: " + this.gen(id);
         },
+
         check() {
             const myID = localStorage.getItem('kb_id');
-            if(localStorage.getItem('kb_ses') === new Date().toDateString()) {
+            const session = localStorage.getItem('kb_ses');
+            
+            // Cek apakah sesi masih berlaku (hari yang sama)
+            if(session === new Date().toDateString()) {
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('main-nav').style.display = 'flex';
-                if(myID === this.ADMIN_ID) document.getElementById('admin-panel').style.display = 'block';
+                
+                // Tampilkan Panel Admin jika yang login adalah BOSSGILANG
+                if(myID === this.ADMIN_ID) {
+                    document.getElementById('admin-panel').style.display = 'block';
+                }
                 pos.init();
             }
         }
     };
 
-    // POS & TRANSACTION SYSTEM
-    const pos = {
-        rev: parseInt(localStorage.getItem('kb_rev')) || 0,
-        ord: parseInt(localStorage.getItem('kb_ord')) || 0,
-        exp: parseInt(localStorage.getItem('kb_exp')) || 0,
-        cart: [],
-        menu: JSON.parse(localStorage.getItem('kb_menu')) || [{id:1, n:'Contoh Menu', p:10000, s:100, laku:0}],
-        expenses: JSON.parse(localStorage.getItem('kb_ex_list')) || [],
-
-        init() { this.render(); this.upDash(); inv.render(); this.renderLaporan(); ui.refreshStoreName(); this.initQR(); },
-        initQR() {
-            const up = document.getElementById('qris-upload');
-            if(up) up.onchange = function() {
-                const r = new FileReader();
-                r.onload = () => { localStorage.setItem('kb_qris_img', r.result); alert("QRIS Terpasang!"); };
-                r.readAsDataURL(this.files[0]);
-            };
-        },
-        render() {
-            const b = document.getElementById('l-menu'); b.innerHTML = '';
-            this.menu.forEach(m => {
-                b.innerHTML += `<div class="card" style="text-align:center; cursor:pointer" onclick="pos.add(${m.id})">
-                    <b>${m.n}</b><br><small style="color:var(--gold)">Rp ${m.p.toLocaleString()}</small><br><small style="font-size:10px; opacity:0.5">Stok: ${m.s}</small>
-                </div>`;
-            });
-        },
-        add(id) {
-            const m = this.menu.find(x => x.id == id);
-            if(m && m.s > 0) { this.cart.push({id: m.id, n: m.n, p: m.p}); this.draw(); }
-        },
-        draw() {
-            const b = document.getElementById('cart-list'); let t = 0; b.innerHTML = '';
-            this.cart.forEach((c, idx) => { t += c.p; b.innerHTML += `<div style="display:flex;justify-content:space-between;margin-bottom:5px;font-size:13px">${c.n} <b>${c.p.toLocaleString()} <span onclick="pos.removeItem(${idx})" style="color:var(--danger);margin-left:8px">×</span></b></div>`; });
-            document.getElementById('cart-t').innerText = "Rp " + t.toLocaleString();
-        },
-        removeItem(idx) { this.cart.splice(idx,1); this.draw(); },
-        calChange() { /* logic */ },
-        pay(type) {
-            if(this.cart.length === 0) return;
-            if(type === 'QRIS') {
-                const img = localStorage.getItem('kb_qris_img');
-                const el = document.getElementById('cust-qris');
-                if(img) { el.src = img; el.style.display = 'block'; document.getElementById('qris-placeholder').style.display='none'; }
-                document.getElementById('qris-amt').innerText = document.getElementById('cart-t').innerText;
-                document.getElementById('qris-pay-overlay').style.display = 'flex';
-            } else { this.done(); }
-        },
-        done() {
-            this.cart.forEach(c => { 
-                const i = this.menu.findIndex(m => m.id == c.id); 
-                if(i!==-1) { this.menu[i].s -= 1; this.menu[i].laku += 1; }
-            });
-            this.rev += this.cart.reduce((a,b)=>a+b.p,0); this.ord += 1;
-            localStorage.setItem('kb_rev', this.rev); localStorage.setItem('kb_ord', this.ord);
-            localStorage.setItem('kb_menu', JSON.stringify(this.menu));
-            this.cart = []; ui.hideQR(); this.init(); alert("Pembayaran Berhasil!");
-        },
-        addExpense() {
-            const n = document.getElementById('ex-note').value, a = parseInt(document.getElementById('ex-amt').value);
-            if(n && a) {
-                this.expenses.push({n, a}); this.exp += a;
-                localStorage.setItem('kb_exp', this.exp); localStorage.setItem('kb_ex_list', JSON.stringify(this.expenses));
-                document.getElementById('ex-note').value = ''; document.getElementById('ex-amt').value = '';
-                this.init();
-            }
-        },
-        renderLaporan() {
-            const bl = document.getElementById('l-terlaris'); bl.innerHTML = '';
-            [...this.menu].sort((a,b)=>b.laku-a.laku).forEach(m => {
-                if(m.laku > 0) bl.innerHTML += `<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px"><span>${m.n}</span><b>${m.laku}x</b></div>`;
-            });
-            const be = document.getElementById('l-expense'); be.innerHTML = '';
-            this.expenses.forEach(e => { be.innerHTML += `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--danger)"><span>${e.n}</span><b>-${e.a.toLocaleString()}</b></div>`; });
-        },
-        upDash() { 
-            document.getElementById('v-rev').innerText = "Rp " + (this.rev - this.exp).toLocaleString(); 
-            document.getElementById('v-ord').innerText = this.ord;
-            document.getElementById('v-exp').innerText = "Rp " + this.exp.toLocaleString();
-        },
-        reset() { if(confirm("Hapus data hari ini?")) { localStorage.setItem('kb_rev',0); localStorage.setItem('kb_ord',0); localStorage.setItem('kb_exp',0); localStorage.setItem('kb_ex_list','[]'); location.reload(); } }
+    // Jalankan pengecekan setiap kali halaman dimuat
+    window.onload = () => {
+        core.check();
     };
-
-    // INVENTORY SYSTEM
-    const inv = {
-        save() {
-            const n = document.getElementById('n-name').value, p = parseInt(document.getElementById('n-price').value), id = document.getElementById('edit-id').value;
-            if(!n || !p) return;
-            if(id) {
-                const i = pos.menu.findIndex(m => m.id == id);
-                pos.menu[i].n = n; pos.menu[i].p = p;
-                document.getElementById('edit-id').value = '';
-                document.getElementById('form-title').innerText = "Tambah Menu";
-            } else { pos.menu.push({id: Date.now(), n, p, s: 100, laku:0}); }
-            localStorage.setItem('kb_menu', JSON.stringify(pos.menu));
-            document.getElementById('n-name').value = ''; document.getElementById('n-price').value = '';
-            pos.init();
-        },
-        edit(id) {
-            const m = pos.menu.find(x => x.id == id);
-            document.getElementById('n-name').value = m.n; 
-            document.getElementById('n-price').value = m.p;
-            document.getElementById('edit-id').value = m.id;
-            document.getElementById('form-title').innerText = "Edit: " + m.n;
-            window.scrollTo(0,0);
-        },
-        del(id) { if(confirm("Hapus menu?")) { pos.menu = pos.menu.filter(m => m.id != id); localStorage.setItem('kb_menu', JSON.stringify(pos.menu)); pos.init(); } },
-        render() {
-            const b = document.getElementById('l-stok'); b.innerHTML = '';
-            pos.menu.forEach(m => {
-                b.innerHTML += `<div class="card" style="display:flex; justify-content:space-between; align-items:center; padding:12px">
-                    <div><b>${m.n}</b><br><small>Rp ${m.p.toLocaleString()} | Stok: ${m.s}</small></div>
-                    <div style="display:flex; gap:8px">
-                        <button class="badge" style="background:var(--primary)" onclick="inv.edit(${m.id})">✏️</button>
-                        <button class="badge" style="background:var(--danger)" onclick="inv.del(${m.id})">🗑️</button>
-                    </div>
-                </div>`;
-            });
-        }
-    };
-
-    // UI & THEME
-    const ui = {
-        tab(id, btn) {
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-        },
-        saveStoreName() {
-            const n = document.getElementById('input-nama-toko').value;
-            if(n) { localStorage.setItem('kb_nama_toko', n); this.refreshStoreName(); alert("Nama Toko Diupdate!"); }
-        },
-        refreshStoreName() {
-            const n = localStorage.getItem('kb_nama_toko') || "KASIR BOS";
-            document.getElementById('display-nama-toko').innerText = n;
-            document.getElementById('input-nama-toko').value = n;
-        },
-        hideQR() { document.getElementById('qris-pay-overlay').style.display = 'none'; },
-        logout() { localStorage.removeItem('kb_ses'); location.reload(); }
-    };
-    core.check();
 </script>
 </body>
 </html>
