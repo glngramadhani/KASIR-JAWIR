@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KASIR BOS - FIX EDITION</title>
+    <title>KASIR BOS - STOK EDITION</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Poppins:wght@400;600&display=swap');
         :root { 
@@ -14,22 +14,24 @@
         body { font-family: 'Poppins', sans-serif; background: #000; margin: 0; color: var(--text-main); }
         .app-container { width: 100%; max-width: 480px; background: var(--bg-app); min-height: 100vh; margin: 0 auto; position: relative; }
 
-        /* UI ELEMENTS */
+        /* HEADER & STATS */
         .header { background: linear-gradient(135deg, var(--primary), #4a69bd); padding: 50px 20px 80px; border-radius: 0 0 35px 35px; text-align: center; }
         .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: -40px 20px 20px; }
         .page { display: none; padding: 15px 15px 120px; }
         .page.active { display: block; }
         .card { background: var(--bg-card); padding: 15px; border-radius: 18px; margin-bottom: 12px; border: 1px solid var(--border); }
         
-        /* NAVBAR */
+        /* BOTTOM NAV */
         .bottom-nav { position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%); width: 92%; height: 65px; background: #111a2e; display: none; justify-content: space-around; align-items: center; border-radius: 20px; z-index: 1000; border: 1px solid var(--border); }
         .nav-item { color: #64748b; font-size: 10px; border: none; background: none; text-align: center; cursor: pointer; }
         .nav-item.active { color: var(--gold); }
         .nav-item i { font-size: 20px; display: block; font-style: normal; }
 
+        /* FORM ELEMENTS */
         input { width: 100%; padding: 14px; border-radius: 12px; border: 1px solid var(--border); margin: 6px 0; background: #0a1128; color: white; }
         .btn-gold { background: var(--gold); color: white; border: none; padding: 14px; border-radius: 12px; width: 100%; font-weight: 700; cursor: pointer; }
-        
+        .badge-stok { background: #1e293b; padding: 2px 8px; border-radius: 5px; font-size: 11px; color: var(--gold); }
+
         #login-screen { position: fixed; inset: 0; z-index: 9999; background: #0a1128; display: flex; justify-content: center; align-items: center; padding: 25px; }
         #qris-pay-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 2000; display: none; justify-content: center; align-items: center; padding: 20px; }
     </style>
@@ -77,7 +79,7 @@
     </div>
 
     <div id="p-kasir" class="page">
-        <h3>Menu</h3>
+        <h3>Menu Jualan</h3>
         <div id="l-menu" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;"></div>
         
         <div class="card" style="margin-top:20px; border-top: 3px solid var(--gold);">
@@ -87,10 +89,9 @@
                 <b>TOTAL</b><b id="cart-t" style="color:var(--gold)">Rp 0</b>
             </div>
             
-            <input type="number" id="cash-in" oninput="pos.calChange()" placeholder="Uang Tunai (Rp)..." style="margin-top:15px; border-color:var(--gold)">
+            <input type="number" id="cash-in" oninput="pos.calChange()" placeholder="Uang Tunai (Rp)..." style="margin-top:15px;">
             <div style="display:flex; justify-content:space-between; margin-bottom:15px">
-                <small>Kembalian:</small>
-                <b id="cash-change" style="color:var(--success)">Rp 0</b>
+                <small>Kembalian:</small><b id="cash-change" style="color:var(--success)">Rp 0</b>
             </div>
 
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
@@ -112,11 +113,15 @@
     </div>
 
     <div id="p-stok" class="page">
-        <h3 id="form-title">Menu Baru</h3>
+        <h3 id="form-title">Tambah / Edit Menu</h3>
         <div class="card">
-            <input type="hidden" id="edit-id"><input type="text" id="n-name" placeholder="Nama"><input type="number" id="n-price" placeholder="Harga">
-            <button onclick="inv.save()" class="btn-gold">SIMPAN</button>
+            <input type="hidden" id="edit-id">
+            <input type="text" id="n-name" placeholder="Nama Barang (Mie, Es, dll)">
+            <input type="number" id="n-price" placeholder="Harga Jual">
+            <input type="number" id="n-stok" placeholder="Jumlah Stok Awal">
+            <button onclick="inv.save()" class="btn-gold">SIMPAN PRODUK</button>
         </div>
+        <h4>Daftar Stok Barang</h4>
         <div id="l-stok"></div>
     </div>
 
@@ -174,7 +179,7 @@
         rev: parseInt(localStorage.getItem('kb_rev')) || 0,
         ord: parseInt(localStorage.getItem('kb_ord')) || 0,
         exp: parseInt(localStorage.getItem('kb_exp')) || 0,
-        menu: JSON.parse(localStorage.getItem('kb_menu')) || [{id:1, n:'Es Teh', p:5000, s:100, laku:0}],
+        menu: JSON.parse(localStorage.getItem('kb_menu')) || [],
         ex: JSON.parse(localStorage.getItem('kb_ex')) || [],
         cart: [],
 
@@ -188,12 +193,20 @@
         render() {
             const l = document.getElementById('l-menu'); l.innerHTML = '';
             this.menu.forEach(m => {
-                l.innerHTML += `<div class="card" onclick="pos.add(${m.id})" style="text-align:center; padding:10px;"><b>${m.n}</b><br><small>Rp ${m.p.toLocaleString()}</small></div>`;
+                const outOfStock = m.s <= 0;
+                l.innerHTML += `<div class="card" onclick="${outOfStock ? '' : `pos.add(${m.id})`}" style="text-align:center; padding:10px; opacity: ${outOfStock ? '0.4' : '1'}">
+                    <b>${m.n}</b><br>
+                    <small>Rp ${m.p.toLocaleString()}</small><br>
+                    <span class="badge-stok">${outOfStock ? 'HABIS' : `Stok: ${m.s}`}</span>
+                </div>`;
             });
         },
         add(id) {
             const m = this.menu.find(x => x.id == id);
-            if(m && m.s > 0) { this.cart.push({...m}); this.draw(); }
+            // Cek apakah di keranjang sudah ada barang ini, jangan sampai melebihi stok yang ada
+            const inCart = this.cart.filter(c => c.id == id).length;
+            if(m && m.s > inCart) { this.cart.push({...m}); this.draw(); }
+            else { alert("Stok tidak cukup!"); }
         },
         draw() {
             const l = document.getElementById('cart-list'); let t = 0; l.innerHTML = '';
@@ -225,20 +238,17 @@
         },
         done(method) {
             const total = this.cart.reduce((a,b)=>a+b.p, 0);
-            const change = (parseInt(document.getElementById('cash-in').value) || 0) - total;
-            
             this.cart.forEach(c => { 
                 const i = this.menu.findIndex(m => m.id == c.id); 
-                if(i!==-1) { this.menu[i].s--; this.menu[i].laku++; }
+                if(i!==-1) { 
+                    this.menu[i].s--; // Potong Stok
+                    this.menu[i].laku++; 
+                }
             });
-
             this.rev += total; this.ord++;
             localStorage.setItem('kb_rev', this.rev); localStorage.setItem('kb_ord', this.ord);
             localStorage.setItem('kb_menu', JSON.stringify(this.menu));
-            
-            const msg = method === 'CASH' ? `Berhasil!\nKembalian: Rp ${change.toLocaleString()}` : "Pembayaran QRIS Berhasil!";
-            alert(msg);
-
+            alert("Transaksi Berhasil & Stok Terupdate!");
             this.cart = []; document.getElementById('cash-in').value = '';
             ui.hideQR(); this.init();
         },
@@ -262,18 +272,46 @@
 
     const inv = {
         save() {
-            const n = document.getElementById('n-name').value, p = parseInt(document.getElementById('n-price').value), id = document.getElementById('edit-id').value;
-            if(!n || !p) return;
-            if(id) { const i = pos.menu.findIndex(m => m.id == id); pos.menu[i].n = n; pos.menu[i].p = p; }
-            else pos.menu.push({id: Date.now(), n, p, s: 100, laku:0});
-            localStorage.setItem('kb_menu', JSON.stringify(pos.menu)); location.reload();
+            const n = document.getElementById('n-name').value;
+            const p = parseInt(document.getElementById('n-price').value);
+            const s = parseInt(document.getElementById('n-stok').value) || 0;
+            const id = document.getElementById('edit-id').value;
+            if(!n || !p) return alert("Isi Nama & Harga!");
+
+            if(id) { 
+                const i = pos.menu.findIndex(m => m.id == id); 
+                pos.menu[i].n = n; pos.menu[i].p = p; pos.menu[i].s = s; 
+            } else { 
+                pos.menu.push({id: Date.now(), n, p, s, laku:0}); 
+            }
+            localStorage.setItem('kb_menu', JSON.stringify(pos.menu));
+            // Reset Form
+            document.getElementById('n-name').value = '';
+            document.getElementById('n-price').value = '';
+            document.getElementById('n-stok').value = '';
+            document.getElementById('edit-id').value = '';
+            pos.init();
         },
-        edit(id) { const m = pos.menu.find(x => x.id == id); document.getElementById('n-name').value = m.n; document.getElementById('n-price').value = m.p; document.getElementById('edit-id').value = m.id; window.scrollTo(0,0); },
-        del(id) { if(confirm("Hapus?")) { pos.menu = pos.menu.filter(m => m.id != id); localStorage.setItem('kb_menu', JSON.stringify(pos.menu)); pos.init(); } },
+        edit(id) { 
+            const m = pos.menu.find(x => x.id == id); 
+            document.getElementById('n-name').value = m.n; 
+            document.getElementById('n-price').value = m.p; 
+            document.getElementById('n-stok').value = m.s; 
+            document.getElementById('edit-id').value = m.id; 
+            document.getElementById('form-title').innerText = "Edit: " + m.n;
+            window.scrollTo(0,0); 
+        },
+        del(id) { if(confirm("Hapus barang?")) { pos.menu = pos.menu.filter(m => m.id != id); localStorage.setItem('kb_menu', JSON.stringify(pos.menu)); pos.init(); } },
         render() {
             const l = document.getElementById('l-stok'); l.innerHTML = '';
             pos.menu.forEach(m => {
-                l.innerHTML += `<div class="card" style="display:flex;justify-content:space-between;align-items:center;"><span>${m.n}</span><div><button style="background:var(--primary);color:white;border:none;padding:5px 10px;border-radius:5px" onclick="inv.edit(${m.id})">✏️</button> <button style="background:var(--danger);color:white;border:none;padding:5px 10px;border-radius:5px" onclick="inv.del(${m.id})">🗑️</button></div></div>`;
+                l.innerHTML += `<div class="card" style="display:flex;justify-content:space-between;align-items:center;">
+                    <div><b>${m.n}</b><br><small>Rp ${m.p.toLocaleString()} | Stok: ${m.s}</small></div>
+                    <div>
+                        <button style="background:var(--primary);color:white;border:none;padding:8px;border-radius:8px" onclick="inv.edit(${m.id})">✏️</button> 
+                        <button style="background:var(--danger);color:white;border:none;padding:8px;border-radius:8px" onclick="inv.del(${m.id})">🗑️</button>
+                    </div>
+                </div>`;
             });
         }
     };
